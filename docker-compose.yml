@@ -55,8 +55,8 @@ services:
     image: backend
     restart: unless-stopped
     volumes:
-      - .:/var/www/html
-      - env.dev:/var/www/html/.env
+      - ./laravel/:/var/www/html
+      - ./laravel/env.dev:/var/www/html/.env
     container_name: backend
     depends_on:
       - db
