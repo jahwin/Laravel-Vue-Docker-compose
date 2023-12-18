@@ -33,6 +33,8 @@ RUN mkdir -p /home/$user/.composer && \
 WORKDIR /var/www
 
 # Install dependencies
+# Allowing composer to run as root
+ENV COMPOSER_ALLOW_SUPERUSER=1
 RUN composer install --no-scripts --no-autoloader
 
 USER $user
