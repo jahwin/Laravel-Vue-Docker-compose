@@ -49,34 +49,21 @@ services:
       - "3001:80"
   backend:
     build:
-      args:
-        user: sammy
-        uid: 1000
       context: ./laravel/
       dockerfile: Dockerfile
+      target: production
     image: backend
     restart: unless-stopped
-    working_dir: /var/www/
     volumes:
-      - ./laravel/:/var/www
+      - .:/var/www/html
+      - env.dev:/var/www/html/.env
     container_name: backend
     depends_on:
       - db
-    networks:
-      - dbnet
-  nginx:
-    image: nginx:1.17-alpine
-    container_name: nginx
-    restart: unless-stopped
     ports:
-      - 3002:80
-    volumes:
-      - ./laravel/:/var/www
-      - ./nginx:/etc/nginx/conf.d
+      - "8082:80"
     networks:
       - dbnet
-    depends_on:
-      - backend
 volumes:
   db:
   node_modules:

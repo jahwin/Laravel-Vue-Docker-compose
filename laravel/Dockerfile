@@ -1,36 +1,44 @@
-FROM php:7.4-fpm
+FROM composer:2.4 as build
+COPY . /app/
+RUN composer install --prefer-dist --no-dev --optimize-autoloader --no-interaction
 
-# Arguments defined in docker-compose.yml
-ARG user
-ARG uid
+FROM php:8.1-apache-buster as dev
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    zip \
-    unzip
+ENV APP_ENV=dev
+ENV APP_DEBUG=true
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
-# Clear cache
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y zip
+RUN docker-php-ext-install pdo pdo_mysql
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+COPY . /var/www/html/
+COPY --from=build /usr/bin/composer /usr/bin/composer
+RUN composer install --prefer-dist --no-interaction
 
-# Get latest Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY docker/apache/000-default.conf /etc/apache2/sites-available/000-default.conf
+COPY env.dev /var/www/html/.env
 
+RUN php artisan config:cache && \
+    php artisan route:cache && \
+    chmod 777 -R /var/www/html/storage/ && \
+    chown -R www-data:www-data /var/www/ && \
+    a2enmod rewrite
 
-# Create system user to run Composer and Artisan Commands
-RUN useradd -G www-data,root -u $uid -d /home/$user $user
-RUN mkdir -p /home/$user/.composer && \
-    chown -R $user:$user /home/$user
+FROM php:8.1-apache-buster as production
 
-# Set working directory
-WORKDIR /var/www
+ENV APP_ENV=production
+ENV APP_DEBUG=false
 
+RUN docker-php-ext-configure opcache --enable-opcache && \
+    docker-php-ext-install pdo pdo_mysql
+COPY docker/php/conf.d/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
-USER $user
+COPY --from=build /app /var/www/html
+COPY docker/apache/000-default.conf /etc/apache2/sites-available/000-default.conf
+COPY env.dev /var/www/html/.env
+
+RUN php artisan config:cache && \
+    php artisan route:cache && \
+    chmod 777 -R /var/www/html/storage/ && \
+    chown -R www-data:www-data /var/www/ && \
+    a2enmod rewrite
