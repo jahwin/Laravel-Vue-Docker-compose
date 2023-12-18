@@ -33,7 +33,6 @@ RUN mkdir -p /home/$user/.composer && \
 WORKDIR /var/www
 
 # Install dependencies
-COPY composer.json composer.lock ./
 RUN composer install --no-scripts --no-autoloader
 
 USER $user
